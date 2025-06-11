@@ -62,3 +62,13 @@ async function fetchShopifyData(shop, accessToken, resource) {
 app.listen(PORT, () => {
   console.log(`Server is running on port http://localhost:${PORT}`);
 });
+
+import dotenv from 'dotenv';
+dotenv.config();
+
+const appUrl = process.env.APP_URL || process.env.HOST;
+
+if (!appUrl) {
+  throw new Error("APP_URL or HOST is not set. Please check your environment variables.");
+}
+
