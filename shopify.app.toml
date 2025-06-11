@@ -1,0 +1,32 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "d30d432207466fafa4954abc258326b7"
+name = "intellsys connector"
+handle = "intellsys-connector"
+application_url = "https://a24b-203-189-252-170.ngrok-free.app"
+embedded = true
+
+[build]
+include_config_on_deploy = true
+
+[webhooks]
+api_version = "2025-04"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_orders, read_customers, read_fulfillments, read_analytics"
+
+
+[auth]
+redirect_urls = [ "https://a24b-203-189-252-170.ngrok-free.app/api/auth" ]
+
+[pos]
+embedded = false
