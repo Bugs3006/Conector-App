@@ -1,22 +1,33 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import fetch from 'node-fetch'; // or use native fetch in Node 18+
+import fetch from 'node-fetch'; // If you're using Node 18+, you can use native fetch
 
+// Load environment variables
 dotenv.config();
-const app = express();
-const PORT = process.env.PORT || 8081;
 
-// Serve static files from 'public' folder (for your HTML, CSS, etc.)
+// ✅ Get environment variables early
+const appUrl = process.env.APP_URL || process.env.HOST;
+const PORT = process.env.PORT || 8080;
+
+// 🚫 Exit if appUrl is missing
+if (!appUrl || appUrl.trim() === '') {
+  throw new Error("❌ APP_URL or HOST is not set. Please check your Render environment variables.");
+}
+
+// ✅ Initialize Express app
+const app = express();
+
+// Serve static files (e.g., your HTML form for selecting data)
 app.use(express.static('public'));
 
-// Middleware to parse JSON bodies
+// Enable JSON parsing
 app.use(express.json());
 
-// Endpoint to receive user-selected data types and fetch Shopify data
+// ✅ Endpoint to handle data requests
 app.post('/fetch-and-send', async (req, res) => {
   const { selectedDataTypes } = req.body;
-  const shop = req.query.shop;       // Usually from OAuth/session
-  const accessToken = req.query.token;  // Usually securely stored, simplified here
+  const shop = req.query.shop; // Ideally from OAuth/session
+  const accessToken = req.query.token; // Simplified for testing
 
   if (!shop || !accessToken) {
     return res.status(400).json({ error: 'Missing shop or access token' });
@@ -37,38 +48,31 @@ app.post('/fetch-and-send', async (req, res) => {
 
     res.json(results);
   } catch (err) {
-    console.error(err);
+    console.error('❌ Error fetching Shopify data:', err);
     res.status(500).json({ error: 'Failed to fetch data' });
   }
 });
 
-// Helper function to fetch data from Shopify Admin API
+// ✅ Helper function to fetch Shopify resources
 async function fetchShopifyData(shop, accessToken, resource) {
   const url = `https://${shop}/admin/api/2023-04/${resource}.json`;
+
   const response = await fetch(url, {
     headers: {
       'X-Shopify-Access-Token': accessToken,
       'Content-Type': 'application/json',
     },
   });
+
   if (!response.ok) {
     throw new Error(`Failed to fetch ${resource}`);
   }
+
   const data = await response.json();
   return data[resource];
 }
 
-// Start the Express server
+// ✅ Start the server
 app.listen(PORT, () => {
-  console.log(`Server is running on port http://localhost:${PORT}`);
+  console.log(`✅ Server running at ${appUrl} on port ${PORT}`);
 });
-
-import dotenv from 'dotenv';
-dotenv.config();
-
-const appUrl = process.env.APP_URL || process.env.HOST;
-
-if (!appUrl) {
-  throw new Error("APP_URL or HOST is not set. Please check your environment variables.");
-}
-
