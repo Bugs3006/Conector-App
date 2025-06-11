@@ -1,10 +1,3 @@
-// import { createServer } from 'node:http';
- 
-// const server = createServer((req, res) => {
-//   res.writeHead(200, { 'Content-Type': 'text/plain' });
-//   res.end('Hello hello World!\n');
-// });
- 
 import express from 'express';
 const app = express();
 
@@ -58,5 +51,5 @@ async function fetchShopifyCustomers() {
 
 const PORT = process.env.PORT || 8081;
 app.listen(PORT, () => {
-  console.log(`Server running on ${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
