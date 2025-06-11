@@ -3,7 +3,7 @@
 client_id = "d30d432207466fafa4954abc258326b7"
 name = "intellsys connector"
 handle = "intellsys-connector"
-application_url = "https://a24b-203-189-252-170.ngrok-free.app"
+application_url = "https://conector-app.onrender.com"
 embedded = true
 
 [build]
@@ -26,7 +26,7 @@ scopes = "read_orders, read_customers, read_fulfillments, read_analytics"
 
 
 [auth]
-redirect_urls = [ "https://a24b-203-189-252-170.ngrok-free.app/api/auth" ]
+redirect_urls = [ "https://conector-app.onrender.com/api/auth" ]
 
 [pos]
 embedded = false
