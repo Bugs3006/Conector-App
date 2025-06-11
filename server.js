@@ -60,5 +60,5 @@ async function fetchShopifyData(shop, accessToken, resource) {
 
 // Start the Express server
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Server is running on port http://localhost:${PORT}`);
 });
