@@ -1,23 +1,94 @@
-<form id="data-select-form">
-  <label><input type="checkbox" name="dataType" value="products" /> Products</label><br/>
-  <label><input type="checkbox" name="dataType" value="orders" /> Orders</label><br/>
-  <label><input type="checkbox" name="dataType" value="customers" /> Customers</label><br/>
-  <button type="submit">Send Data</button>
-</form>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Shopify Data Selector</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    h2 {
+      color: #333;
+    }
+    label {
+      display: block;
+      margin: 10px 0;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: skyblue;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #response {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      background: #f9f9f9;
+      padding: 10px;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+  <h2>Select Data to Share</h2>
+  <form id="dataForm">
+    <label><input type="checkbox" name="dataType" value="products" /> Products</label>
+    <label><input type="checkbox" name="dataType" value="orders" /> Orders</label>
+    <label><input type="checkbox" name="dataType" value="customers" /> Customers</label>
 
-<script>
-  document.getElementById('data-select-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const selected = Array.from(document.querySelectorAll('input[name="dataType"]:checked')).map(cb => cb.value);
+    <!-- In production, you'd store token securely -->
+    <input type="text" id="shop" placeholder="Enter shop (e.g., mystore.myshopify.com)" required />
+    <input type="text" id="token" placeholder="Enter access token" required />
 
-    const response = await fetch('/fetch-and-send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ selectedDataTypes: selected }),
+    <button type="submit">Fetch and Send</button>
+  </form>
+
+  <div id="response"></div>
+
+  <script>
+    const form = document.getElementById('dataForm');
+    const responseDiv = document.getElementById('response');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const selectedDataTypes = [];
+      document.querySelectorAll('input[name="dataType"]:checked').forEach((checkbox) => {
+        selectedDataTypes.push(checkbox.value);
+      });
+
+      const shop = document.getElementById('shop').value;
+      const token = document.getElementById('token').value;
+
+      if (!shop || !token || selectedDataTypes.length === 0) {
+        alert('Please enter shop, token, and select at least one data type.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/fetch-and-send?shop=${shop}&token=${token}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ selectedDataTypes }),
+        });
+
+        const data = await res.json();
+        responseDiv.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        console.error(err);
+        responseDiv.textContent = 'Error fetching data.';
+      }
     });
-
-    const result = await response.text();
-    alert(result);
-  });
-</script>
-
+  </script>
+</body>
+</html>
