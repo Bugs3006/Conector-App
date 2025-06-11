@@ -1,1 +1,23 @@
+<form id="data-select-form">
+  <label><input type="checkbox" name="dataType" value="products" /> Products</label><br/>
+  <label><input type="checkbox" name="dataType" value="orders" /> Orders</label><br/>
+  <label><input type="checkbox" name="dataType" value="customers" /> Customers</label><br/>
+  <button type="submit">Send Data</button>
+</form>
+
+<script>
+  document.getElementById('data-select-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const selected = Array.from(document.querySelectorAll('input[name="dataType"]:checked')).map(cb => cb.value);
+
+    const response = await fetch('/fetch-and-send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ selectedDataTypes: selected }),
+    });
+
+    const result = await response.text();
+    alert(result);
+  });
+</script>
 
