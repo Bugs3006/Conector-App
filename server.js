@@ -3,6 +3,8 @@ import express from 'express';
 import dotenv from 'dotenv';
 import fetch from 'node-fetch';
 import { createRequestHandler } from '@remix-run/express';
+import crypto from 'crypto';
+import querystring from 'querystring';
 
 // Load environment variables
 dotenv.config();
@@ -10,7 +12,8 @@ dotenv.config();
 // Fallback for SHOPIFY_APP_URL if only HOST is set (for Remix bug workaround)
 if (
   process.env.HOST &&
-  (!process.env.SHOPIFY_APP_URL || process.env.SHOPIFY_APP_URL === process.env.HOST)
+  (!process.env.SHOPIFY_APP_URL ||
+    process.env.SHOPIFY_APP_URL === process.env.HOST)
 ) {
   process.env.SHOPIFY_APP_URL = process.env.HOST;
   delete process.env.HOST;
@@ -24,6 +27,12 @@ if (!appUrl) {
 
 const app = express();
 const PORT = process.env.PORT || 8081;
+
+// Shopify OAuth variables
+const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY;
+const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET;
+const SCOPES = process.env.SCOPES;
+const APP_URL = process.env.APP_URL || process.env.HOST;
 
 // Middleware to parse JSON bodies
 app.use(express.json());
@@ -79,37 +88,13 @@ async function fetchShopifyData(shop, accessToken, resource) {
   return data[resource];
 }
 
-// ✅ Let Remix handle all other routes
-app.all(
-  '*',
-  createRequestHandler({
-    
-    mode: process.env.NODE_ENV,
-  })
-);
-
-// Start Express server
-app.listen(PORT, () => {
-  console.log(`✅ Server running at http://localhost:${PORT}`);
-});
-
-import crypto from 'crypto';
-import querystring from 'querystring';
-
-const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY;
-const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET;
-const SCOPES = process.env.SCOPES;
-const APP_URL = process.env.APP_URL || process.env.HOST;
-
-// Step 1: Redirect to Shopify for OAuth
+// ✅ OAuth Step 1: Redirect to Shopify for Auth
 app.get('/auth', (req, res) => {
   const { shop } = req.query;
-
   if (!shop) return res.status(400).send('Missing shop parameter');
 
-  const redirectUri = `${APP_URL}/auth/callback`;
   const state = crypto.randomBytes(8).toString('hex');
-
+  const redirectUri = `${APP_URL}/auth/callback`;
   const queryParams = querystring.stringify({
     client_id: SHOPIFY_API_KEY,
     scope: SCOPES,
@@ -120,25 +105,45 @@ app.get('/auth', (req, res) => {
   res.redirect(`https://${shop}/admin/oauth/authorize?${queryParams}`);
 });
 
-// Step 2: Handle callback and exchange code for token
+// ✅ OAuth Step 2: Callback to exchange token
 app.get('/auth/callback', async (req, res) => {
   const { shop, code } = req.query;
 
-  const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      client_id: SHOPIFY_API_KEY,
-      client_secret: SHOPIFY_API_SECRET,
-      code,
-    }),
-  });
+  if (!shop || !code) {
+    return res.status(400).send('Missing shop or code');
+  }
 
-  const tokenData = await tokenResponse.json();
-  const accessToken = tokenData.access_token;
+  try {
+    const response = await fetch(`https://${shop}/admin/oauth/access_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: SHOPIFY_API_KEY,
+        client_secret: SHOPIFY_API_SECRET,
+        code,
+      }),
+    });
 
-  // ⚠️ Store token securely (DB or temporary in-memory store for demo)
-  // Redirect to app with access token
-  res.redirect(`/?shop=${shop}&token=${accessToken}`);
+    const tokenData = await response.json();
+    const accessToken = tokenData.access_token;
+
+    // ⚠️ Store token in DB (not implemented here)
+    res.redirect(`/?shop=${shop}&token=${accessToken}`);
+  } catch (err) {
+    console.error('Error fetching access token:', err);
+    res.status(500).send('Error retrieving access token');
+  }
 });
 
+// ✅ Let Remix handle all other routes
+app.all(
+  '*',
+  createRequestHandler({
+    mode: process.env.NODE_ENV,
+  })
+);
+
+// Start Express server
+app.listen(PORT, () => {
+  console.log(`✅ Server running at http://localhost:${PORT}`);
+});
