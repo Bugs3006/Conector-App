@@ -89,6 +89,15 @@
         responseDiv.textContent = 'Error fetching data.';
       }
     });
+    window.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  const shop = params.get('shop');
+  const token = params.get('token');
+
+  if (shop) document.getElementById('shop').value = shop;
+  if (token) document.getElementById('token').value = token;
+});
+
   </script>
 </body>
 </html>
