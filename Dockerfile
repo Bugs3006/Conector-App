@@ -1,19 +1,28 @@
+# Use official Node.js image
 FROM node:18-alpine
-RUN apk add --no-cache openssl
 
+# Set working directory
 WORKDIR /app
-EXPOSE 8081
 
-ENV NODE_ENV=production
+# Copy package files
+COPY package.json ./
+COPY package-lock.json ./
 
-COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev && npm cache clean --force
+# Install production dependencies only
+RUN npm install --omit=dev && npm cache clean --force
 
-# Optionally remove CLI tools for production
-RUN npm remove @shopify/cli || true
-
+# Copy rest of the application
 COPY . .
 
-RUN npm run build
+# Build the app (Remix & Prisma migrations)
+RUN npm run setup && npm run build
 
-CMD ["node", "server.js"]
+# Set environment variables (Optional: override in Render or Vercel dashboard)
+ENV NODE_ENV=production
+ENV PORT=8080
+
+# Expose port
+EXPOSE 8080
+
+# Start the app
+CMD ["npm", "run", "start"]
