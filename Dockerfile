@@ -1,28 +1,20 @@
-# Use official Node.js image
-FROM node:18-alpine
+# Use a Node base image
+FROM node:20-alpine
 
 # Set working directory
 WORKDIR /app
 
 # Copy package files
-COPY package.json ./
-COPY package-lock.json ./
+COPY package.json package-lock.json ./
 
-# Install production dependencies only
+# Install production dependencies
 RUN npm install --omit=dev && npm cache clean --force
 
-# Copy rest of the application
+# Copy the rest of the application
 COPY . .
 
-# Build the app (Remix & Prisma migrations)
-RUN npm run setup && npm run build
+# Expose the port your app runs on
+EXPOSE 3000
 
-# Set environment variables (Optional: override in Render or Vercel dashboard)
-ENV NODE_ENV=production
-ENV PORT=8080
-
-# Expose port
-EXPOSE 8080
-
-# Start the app
+# Start your app
 CMD ["npm", "run", "start"]
