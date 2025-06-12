@@ -2,14 +2,24 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import fetch from 'node-fetch';
+import { createRequestHandler } from '@remix-run/express';
 
 // Load environment variables
 dotenv.config();
 
-// Check for required environment variable
-const appUrl = process.env.APP_URL || process.env.HOST;
+// Fallback for SHOPIFY_APP_URL if only HOST is set (for Remix bug workaround)
+if (
+  process.env.HOST &&
+  (!process.env.SHOPIFY_APP_URL || process.env.SHOPIFY_APP_URL === process.env.HOST)
+) {
+  process.env.SHOPIFY_APP_URL = process.env.HOST;
+  delete process.env.HOST;
+}
+
+// Check for required app URL
+const appUrl = process.env.APP_URL || process.env.SHOPIFY_APP_URL;
 if (!appUrl) {
-  throw new Error("APP_URL or HOST is not set. Please check your environment variables.");
+  throw new Error("APP_URL or HOST/SHOPIFY_APP_URL is not set. Please check your environment variables.");
 }
 
 const app = express();
@@ -18,10 +28,10 @@ const PORT = process.env.PORT || 8081;
 // Middleware to parse JSON bodies
 app.use(express.json());
 
-// Serve static files (like index.html) from the public directory
+// Serve static files (optional)
 app.use(express.static('public'));
 
-// Endpoint to receive user-selected data types and fetch Shopify data
+// ✅ Shopify data fetching API (your custom route)
 app.post('/fetch-and-send', async (req, res) => {
   const { selectedDataTypes } = req.body;
   const shop = req.query.shop;
@@ -51,7 +61,7 @@ app.post('/fetch-and-send', async (req, res) => {
   }
 });
 
-// Helper function to fetch data from Shopify Admin API
+// Shopify Admin API fetch helper
 async function fetchShopifyData(shop, accessToken, resource) {
   const url = `https://${shop}/admin/api/2023-04/${resource}.json`;
   const response = await fetch(url, {
@@ -69,7 +79,16 @@ async function fetchShopifyData(shop, accessToken, resource) {
   return data[resource];
 }
 
-// Start the Express server
+// ✅ Let Remix handle all other routes
+app.all(
+  '*',
+  createRequestHandler({
+    build: require('./build'),
+    mode: process.env.NODE_ENV,
+  })
+);
+
+// Start Express server
 app.listen(PORT, () => {
-  console.log(`✅ Server is running on http://localhost:${PORT}`);
+  console.log(`✅ Server running at http://localhost:${PORT}`);
 });
