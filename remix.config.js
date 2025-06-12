@@ -18,3 +18,11 @@ module.exports = {
   dev: { port: process.env.HMR_SERVER_PORT || 8002 },
   future: {},
 };
+/**
+ * @type {import('@remix-run/dev').AppConfig}
+ */
+module.exports = {
+  server: "./server.js", // or your Remix server entry
+  // ...
+  // No need to change other config
+};
