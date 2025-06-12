@@ -83,7 +83,7 @@ async function fetchShopifyData(shop, accessToken, resource) {
 app.all(
   '*',
   createRequestHandler({
-    build: require('./build'),
+    
     mode: process.env.NODE_ENV,
   })
 );
