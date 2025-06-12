@@ -92,3 +92,53 @@ app.all(
 app.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
 });
+
+import crypto from 'crypto';
+import querystring from 'querystring';
+
+const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY;
+const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET;
+const SCOPES = process.env.SCOPES;
+const APP_URL = process.env.APP_URL || process.env.HOST;
+
+// Step 1: Redirect to Shopify for OAuth
+app.get('/auth', (req, res) => {
+  const { shop } = req.query;
+
+  if (!shop) return res.status(400).send('Missing shop parameter');
+
+  const redirectUri = `${APP_URL}/auth/callback`;
+  const state = crypto.randomBytes(8).toString('hex');
+
+  const queryParams = querystring.stringify({
+    client_id: SHOPIFY_API_KEY,
+    scope: SCOPES,
+    redirect_uri: redirectUri,
+    state,
+  });
+
+  res.redirect(`https://${shop}/admin/oauth/authorize?${queryParams}`);
+});
+
+// Step 2: Handle callback and exchange code for token
+app.get('/auth/callback', async (req, res) => {
+  const { shop, code } = req.query;
+
+  const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: SHOPIFY_API_KEY,
+      client_secret: SHOPIFY_API_SECRET,
+      code,
+    }),
+  });
+
+  const tokenData = await tokenResponse.json();
+  const accessToken = tokenData.access_token;
+
+  // ⚠️ Store token securely (DB or temporary in-memory store for demo)
+  // Redirect to app with access token
+  res.redirect(`/?shop=${shop}&token=${accessToken}`);
+});
+
