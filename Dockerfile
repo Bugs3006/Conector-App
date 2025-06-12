@@ -1,20 +1,31 @@
-# Use a Node base image
-FROM node:20-alpine
+# Step 1: Build stage
+FROM node:20-alpine AS build
 
-# Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json ./
+# Install dependencies
+COPY package.json package-lock.json* ./
+RUN npm install
 
-# Install production dependencies
-RUN npm install --omit=dev && npm cache clean --force
-
-# Copy the rest of the application
+# Copy source code
 COPY . .
 
-# Expose the port your app runs on
+# Generate Prisma client
+RUN npx prisma generate
+
+# Build the app
+RUN npm run build
+
+# Step 2: Production stage
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY --from=build /app /app
+
+# Set environment variables here if needed
+ENV NODE_ENV=production
+
 EXPOSE 3000
 
-# Start your app
 CMD ["npm", "run", "start"]
