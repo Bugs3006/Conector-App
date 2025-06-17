@@ -12,35 +12,30 @@ dotenv.config();
 // Fallback for SHOPIFY_APP_URL if only HOST is set (for Remix bug workaround)
 if (
   process.env.HOST &&
-  (!process.env.SHOPIFY_APP_URL ||
-    process.env.SHOPIFY_APP_URL === process.env.HOST)
+  (!process.env.SHOPIFY_APP_URL || process.env.SHOPIFY_APP_URL === process.env.HOST)
 ) {
   process.env.SHOPIFY_APP_URL = process.env.HOST;
   delete process.env.HOST;
 }
 
-// Check for required app URL
 const appUrl = process.env.APP_URL || process.env.SHOPIFY_APP_URL;
 if (!appUrl) {
-  throw new Error("APP_URL or HOST/SHOPIFY_APP_URL is not set. Please check your environment variables.");
+  throw new Error("APP_URL or SHOPIFY_APP_URL is not set.");
 }
 
 const app = express();
-const PORT = process.env.PORT || 8081;
+const PORT = process.env.PORT || 3000;
 
-// Shopify OAuth variables
-const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY;
-const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET;
-const SCOPES = process.env.SCOPES;
-const APP_URL = process.env.APP_URL || process.env.HOST;
-
-// Middleware to parse JSON bodies
+// Middleware
 app.use(express.json());
-
-// Serve static files (optional)
 app.use(express.static('public'));
 
-// ✅ Shopify data fetching API (your custom route)
+// ✅ Health check route for Render
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
+// Shopify Data Fetching API
 app.post('/fetch-and-send', async (req, res) => {
   const { selectedDataTypes } = req.body;
   const shop = req.query.shop;
@@ -51,7 +46,6 @@ app.post('/fetch-and-send', async (req, res) => {
   }
 
   const results = {};
-
   try {
     if (selectedDataTypes.includes('products')) {
       results.products = await fetchShopifyData(shop, accessToken, 'products');
@@ -70,7 +64,6 @@ app.post('/fetch-and-send', async (req, res) => {
   }
 });
 
-// Shopify Admin API fetch helper
 async function fetchShopifyData(shop, accessToken, resource) {
   const url = `https://${shop}/admin/api/2023-04/${resource}.json`;
   const response = await fetch(url, {
@@ -88,16 +81,16 @@ async function fetchShopifyData(shop, accessToken, resource) {
   return data[resource];
 }
 
-// ✅ OAuth Step 1: Redirect to Shopify for Auth
+// OAuth: Redirect
 app.get('/auth', (req, res) => {
   const { shop } = req.query;
   if (!shop) return res.status(400).send('Missing shop parameter');
 
   const state = crypto.randomBytes(8).toString('hex');
-  const redirectUri = `${APP_URL}/auth/callback`;
+  const redirectUri = `${appUrl}/auth/callback`;
   const queryParams = querystring.stringify({
-    client_id: SHOPIFY_API_KEY,
-    scope: SCOPES,
+    client_id: process.env.SHOPIFY_API_KEY,
+    scope: process.env.SCOPES,
     redirect_uri: redirectUri,
     state,
   });
@@ -105,7 +98,7 @@ app.get('/auth', (req, res) => {
   res.redirect(`https://${shop}/admin/oauth/authorize?${queryParams}`);
 });
 
-// ✅ OAuth Step 2: Callback to exchange token
+// OAuth: Callback
 app.get('/auth/callback', async (req, res) => {
   const { shop, code } = req.query;
 
@@ -118,8 +111,8 @@ app.get('/auth/callback', async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        client_id: SHOPIFY_API_KEY,
-        client_secret: SHOPIFY_API_SECRET,
+        client_id: process.env.SHOPIFY_API_KEY,
+        client_secret: process.env.SHOPIFY_API_SECRET,
         code,
       }),
     });
@@ -127,7 +120,7 @@ app.get('/auth/callback', async (req, res) => {
     const tokenData = await response.json();
     const accessToken = tokenData.access_token;
 
-    // ⚠️ Store token in DB (not implemented here)
+    // Store token in DB (optional)
     res.redirect(`/?shop=${shop}&token=${accessToken}`);
   } catch (err) {
     console.error('Error fetching access token:', err);
@@ -135,19 +128,10 @@ app.get('/auth/callback', async (req, res) => {
   }
 });
 
-// ✅ Let Remix handle all other routes
-app.all(
-  '*',
-  createRequestHandler({
-    mode: process.env.NODE_ENV,
-  })
-);
+// All other routes handled by Remix
+app.all('*', createRequestHandler({ mode: process.env.NODE_ENV }));
 
-// Start Express server
-import app from './app.js';
-
-const PORT = process.env.PORT || 3000;
-
+// Start the server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);
 });
