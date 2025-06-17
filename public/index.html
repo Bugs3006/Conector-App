@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Shopify Data Selector</title>
+  <title>intellsys connector</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -43,10 +43,7 @@
     <label><input type="checkbox" name="dataType" value="products" /> Products</label>
     <label><input type="checkbox" name="dataType" value="orders" /> Orders</label>
     <label><input type="checkbox" name="dataType" value="customers" /> Customers</label>
-
-    <!-- In production, you'd store token securely -->
-    <input type="text" id="shop" placeholder="Enter shop (e.g., mystore.myshopify.com)" required />
-    <input type="text" id="token" placeholder="Enter access token" required />
+    <label><input type="checkbox" id="exportExcel" /> Export as Excel</label>
 
     <button type="submit">Fetch and Send</button>
   </form>
@@ -65,16 +62,18 @@
         selectedDataTypes.push(checkbox.value);
       });
 
-      const shop = document.getElementById('shop').value;
-      const token = document.getElementById('token').value;
+      const exportExcel = document.getElementById('exportExcel').checked;
 
-      if (!shop || !token || selectedDataTypes.length === 0) {
-        alert('Please enter shop, token, and select at least one data type.');
+      const params = new URLSearchParams(window.location.search);
+      const shop = params.get('shop');
+
+      if (!shop || selectedDataTypes.length === 0) {
+        alert('Missing shop info or no data types selected.');
         return;
       }
 
       try {
-        const res = await fetch(`/fetch-and-send?shop=${shop}&token=${token}`, {
+        const res = await fetch(`/fetch-and-send?shop=${shop}&exportExcel=${exportExcel}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -82,22 +81,24 @@
           body: JSON.stringify({ selectedDataTypes }),
         });
 
-        const data = await res.json();
-        responseDiv.textContent = JSON.stringify(data, null, 2);
+        if (exportExcel) {
+          const blob = await res.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'shopify-data.xlsx';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        } else {
+          const data = await res.json();
+          responseDiv.textContent = JSON.stringify(data, null, 2);
+        }
       } catch (err) {
         console.error(err);
         responseDiv.textContent = 'Error fetching data.';
       }
     });
-    window.addEventListener('DOMContentLoaded', () => {
-  const params = new URLSearchParams(window.location.search);
-  const shop = params.get('shop');
-  const token = params.get('token');
-
-  if (shop) document.getElementById('shop').value = shop;
-  if (token) document.getElementById('token').value = token;
-});
-
   </script>
 </body>
 </html>

@@ -38,8 +38,9 @@ app.get('/health', (req, res) => {
 // Shopify Data Fetching API
 app.post('/fetch-and-send', async (req, res) => {
   const { selectedDataTypes } = req.body;
-  const shop = req.query.shop;
-  const accessToken = req.query.token;
+  const shop = req.query.shop || "fallback-shop.myshopify.com";
+  const accessToken = "put-temporary-token-here";
+
 
   if (!shop || !accessToken) {
     return res.status(400).json({ error: 'Missing shop or access token' });
