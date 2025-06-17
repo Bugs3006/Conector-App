@@ -2,6 +2,9 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import fetch from 'node-fetch';
+import ExcelJS from 'exceljs';
+import fs from 'fs';
+import path from 'path';
 import { createRequestHandler } from '@remix-run/express';
 import crypto from 'crypto';
 import querystring from 'querystring';
@@ -38,9 +41,8 @@ app.get('/health', (req, res) => {
 // Shopify Data Fetching API
 app.post('/fetch-and-send', async (req, res) => {
   const { selectedDataTypes } = req.body;
-  const shop = req.query.shop || "fallback-shop.myshopify.com";
-  const accessToken = "put-temporary-token-here";
-
+  const shop = req.query.shop;
+  const accessToken = req.query.token;
 
   if (!shop || !accessToken) {
     return res.status(400).json({ error: 'Missing shop or access token' });
@@ -62,6 +64,47 @@ app.post('/fetch-and-send', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch data' });
+  }
+});
+
+// ✅ Excel Export API
+app.post('/export-excel', async (req, res) => {
+  const { selectedDataTypes } = req.body;
+  const shop = req.query.shop;
+  const accessToken = req.query.token;
+
+  if (!shop || !accessToken) {
+    return res.status(400).json({ error: 'Missing shop or access token' });
+  }
+
+  try {
+    const workbook = new ExcelJS.Workbook();
+
+    for (const type of selectedDataTypes) {
+      const data = await fetchShopifyData(shop, accessToken, type);
+      const worksheet = workbook.addWorksheet(type.charAt(0).toUpperCase() + type.slice(1));
+
+      if (data.length > 0) {
+        worksheet.columns = Object.keys(data[0]).map((key) => ({
+          header: key,
+          key,
+          width: 20,
+        }));
+
+        data.forEach((item) => {
+          worksheet.addRow(item);
+        });
+      }
+    }
+
+    const fileName = `shopify_export_${Date.now()}.xlsx`;
+    const filePath = path.join('public', fileName);
+    await workbook.xlsx.writeFile(filePath);
+
+    res.json({ file: `/${fileName}` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to export Excel' });
   }
 });
 

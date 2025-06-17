@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>intellsys connector</title>
+  <title>Intellsys Connector</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -38,14 +38,14 @@
   </style>
 </head>
 <body>
-  <h2>Select Data to Share</h2>
+  <h2>Select Data to Export</h2>
   <form id="dataForm">
     <label><input type="checkbox" name="dataType" value="products" /> Products</label>
     <label><input type="checkbox" name="dataType" value="orders" /> Orders</label>
     <label><input type="checkbox" name="dataType" value="customers" /> Customers</label>
     <label><input type="checkbox" id="exportExcel" /> Export as Excel</label>
 
-    <button type="submit">Fetch and Send</button>
+    <button type="submit">Submit</button>
   </form>
 
   <div id="response"></div>
@@ -66,22 +66,28 @@
 
       const params = new URLSearchParams(window.location.search);
       const shop = params.get('shop');
+      const token = params.get('token');
 
-      if (!shop || selectedDataTypes.length === 0) {
-        alert('Missing shop info or no data types selected.');
+      if (!shop || !token || selectedDataTypes.length === 0) {
+        alert('Missing shop/token or no data types selected.');
         return;
       }
 
-      try {
-        const res = await fetch(`/fetch-and-send?shop=${shop}&exportExcel=${exportExcel}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ selectedDataTypes }),
-        });
+      const query = `shop=${shop}&token=${token}`;
 
+      try {
         if (exportExcel) {
+          const res = await fetch(`/export-excel?${query}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ selectedDataTypes }),
+          });
+
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(errorText);
+          }
+
           const blob = await res.blob();
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -91,12 +97,18 @@
           a.click();
           a.remove();
         } else {
+          const res = await fetch(`/fetch-and-send?${query}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ selectedDataTypes }),
+          });
+
           const data = await res.json();
           responseDiv.textContent = JSON.stringify(data, null, 2);
         }
       } catch (err) {
         console.error(err);
-        responseDiv.textContent = 'Error fetching data.';
+        responseDiv.textContent = 'Error: ' + err.message;
       }
     });
   </script>
